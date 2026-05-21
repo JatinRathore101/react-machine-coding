@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { TICK, makeInitialBars } from "./constants";
-import GlobalControls from "./GlobalControls";
 import ProgressBar from "./ProgressBar";
 
 const ConcurrantProgressBars = () => {
@@ -11,11 +10,15 @@ const ConcurrantProgressBars = () => {
     return () => Object.values(timers.current).forEach(clearInterval);
   }, []);
 
+  const clearTimer = (id) => {
+    clearInterval(timers.current[id]);
+    delete timers.current[id];
+  };
+
   const startBar = (id) => {
     setBars((prev) => {
       const bar = prev.find((b) => b.id === id);
-      if (!bar || bar.status === "running" || bar.status === "completed")
-        return prev;
+      if (!bar || bar.status === "running" || bar.status === "completed") return prev;
       return prev.map((b) => (b.id === id ? { ...b, status: "running" } : b));
     });
 
@@ -23,56 +26,32 @@ const ConcurrantProgressBars = () => {
       setBars((prev) => {
         const bar = prev.find((b) => b.id === id);
         if (!bar || bar.status !== "running") {
-          clearInterval(timers.current[id]);
+          clearTimer(id);
           return prev;
         }
-
-        const newProgress = Math.min(
-          bar.progress + (TICK / bar.duration) * 100,
-          100,
-        );
+        const newProgress = Math.min(bar.progress + (TICK / bar.duration) * 100, 100);
         const completed = newProgress >= 100;
-
-        if (completed) {
-          clearInterval(timers.current[id]);
-          delete timers.current[id];
-        }
-
+        if (completed) clearTimer(id);
         return prev.map((b) =>
-          b.id === id
-            ? {
-                ...b,
-                progress: newProgress,
-                status: completed ? "completed" : "running",
-              }
-            : b,
+          b.id === id ? { ...b, progress: newProgress, status: completed ? "completed" : "running" } : b
         );
       });
     }, TICK);
   };
 
   const pauseBar = (id) => {
-    clearInterval(timers.current[id]);
-    delete timers.current[id];
-    setBars((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "paused" } : b)),
-    );
+    clearTimer(id);
+    setBars((prev) => prev.map((b) => (b.id === id ? { ...b, status: "paused" } : b)));
   };
 
   const resetBar = (id) => {
-    clearInterval(timers.current[id]);
-    delete timers.current[id];
-    setBars((prev) =>
-      prev.map((b) =>
-        b.id === id ? { ...b, progress: 0, status: "idle" } : b,
-      ),
-    );
+    clearTimer(id);
+    setBars((prev) => prev.map((b) => (b.id === id ? { ...b, progress: 0, status: "idle" } : b)));
   };
 
-  const startAll = () =>
-    bars.forEach((b) => {
-      if (b.status !== "running" && b.status !== "completed") startBar(b.id);
-    });
+  const startAll = () => bars.forEach((b) => {
+    if (b.status !== "running" && b.status !== "completed") startBar(b.id);
+  });
 
   const resetAll = () => {
     Object.values(timers.current).forEach(clearInterval);
@@ -81,34 +60,13 @@ const ConcurrantProgressBars = () => {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 640,
-        margin: "40px auto",
-        padding: 24,
-        fontFamily: "system-ui, sans-serif",
-        boxSizing: "border-box",
-      }}
-    >
-      <h2
-        style={{
-          margin: "0 0 20px",
-          fontSize: "1.4rem",
-          fontWeight: 600,
-        }}
-      >
-        Concurrent Progress Bars
-      </h2>
-
-      <GlobalControls onStartAll={startAll} onResetAll={resetAll} />
-
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}
-      >
+    <div style={{ maxWidth: 600, margin: "40px auto", padding: 24, fontFamily: "system-ui, sans-serif" }}>
+      <h2>Concurrent Progress Bars</h2>
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <button onClick={startAll}>Start All</button>
+        <button onClick={resetAll}>Reset All</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {bars.map((bar) => (
           <ProgressBar
             key={bar.id}
